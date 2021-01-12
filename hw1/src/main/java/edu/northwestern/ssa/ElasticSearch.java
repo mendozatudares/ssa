@@ -4,7 +4,6 @@ import org.json.JSONObject;
 import software.amazon.awssdk.http.SdkHttpMethod;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Optional;
 
 public class ElasticSearch extends AwsSignedRestRequest {
