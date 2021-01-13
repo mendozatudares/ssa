@@ -63,23 +63,34 @@ public class App {
 
             for (ArchiveRecord r : ar) {
                 String url = r.getHeader().getUrl();
-                if (url == null) continue;
+            	if (url == null) continue;
 
                 byte[] rawData = IOUtils.toByteArray(r, r.available());
                 String content = new String(rawData);
                 content = content.substring(content.indexOf("\r\n\r\n") + 4);
                 content = content.replace("\0", "");
+                if (content.equals("")) continue;
 
                 Document doc = Jsoup.parse(content);
-                String text = doc.text(), title = doc.title();
+                String title = doc.title(), text = doc.text();
+                if (text.equals("") || title.equals(""))
+                    continue;
 
-                if (text == null) continue;
                 JSONObject body = new JSONObject();
                 body.put("title", title);
                 body.put("txt", text);
                 body.put("url", url);
 
-                es.PostDocument(body);
+                try {
+                    es.PostDocument(body);
+                    continue;
+                } catch (IOException ignored) {}
+                try {
+                    es.PostDocument(body);
+                } catch (IOException e) {
+                    System.out.println(e.toString());
+                    System.out.println("Unable to post " + url);
+                }
             }
 
             es.close();
