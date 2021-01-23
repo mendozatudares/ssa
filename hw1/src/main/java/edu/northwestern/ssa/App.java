@@ -14,6 +14,8 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
 import java.io.IOException;
+import java.text.ParsePosition;
+import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -42,8 +44,11 @@ public class App {
                 res = s3.listObjects(listObjects);
             }
 
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
+            int prefixLength = "crawl-data/CC-NEWS/XXXX/XX/CC-NEWS-".length();
             List<S3Object> s3Objects = res.contents().stream()
-                    .sorted(Comparator.comparing(S3Object::lastModified))
+                    .sorted(Comparator.comparing(object -> dateFormat.parse(
+                            object.key(), new ParsePosition(prefixLength))))
                     .collect(Collectors.toList());
 
             commonCrawlFilename = s3Objects.get(s3Objects.size() - 1).key();
@@ -105,7 +110,7 @@ public class App {
     private static ListObjectsRequest getListObjectsRequest(int year, int month) {
         return ListObjectsRequest.builder()
                 .bucket("commoncrawl")
-                .prefix(String.format("crawl-data/CC-NEWS/%04d/%02d/", year, month))
+                .prefix(String.format("crawl-data/CC-NEWS/%04d/%02d/CC-NEWS-", year, month))
                 .build();
     }
 }
