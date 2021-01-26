@@ -68,7 +68,7 @@ public class App {
 
             for (ArchiveRecord r : ar) {
                 String url = r.getHeader().getUrl();
-            	if (url == null) continue;
+                if (url == null) continue;
 
                 byte[] rawData = IOUtils.toByteArray(r, r.available());
                 String content = new String(rawData);
@@ -87,11 +87,11 @@ public class App {
                 body.put("url", url);
 
                 try {
-                    es.PostDocument(body);
+                    es.PutDocument(body);
                     continue;
                 } catch (IOException ignored) {}
                 try {
-                    es.PostDocument(body);
+                    es.PutDocument(body);
                 } catch (IOException e) {
                     System.out.println(e.toString());
                     System.out.println("Unable to post " + url);
