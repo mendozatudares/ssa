@@ -88,7 +88,7 @@ public class App {
                     continue;
 
                 // Add document to batch, use following format
-                // {{ "index" : { "_id" : "1" } }
+                // { "index" : { "_id" : "1" } }
                 // { "title" : "value1", "txt": "value2", "url": "value3" }
                 JSONObject source = new JSONObject();
                 source.put("title", title);
