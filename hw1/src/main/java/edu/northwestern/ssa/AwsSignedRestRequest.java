@@ -1,5 +1,6 @@
 package edu.northwestern.ssa;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.signer.Aws4Signer;
@@ -60,6 +61,37 @@ public class AwsSignedRestRequest implements Closeable {
         body.ifPresent(realBody -> {
             b.putHeader("Content-Type", "application/json; charset=utf-8");
             b.contentStreamProvider(() -> new StringInputStream(realBody.toString()));
+        });
+        queryParameters.ifPresent(qp -> {
+            qp.forEach((key, value) -> b.putRawQueryParameter(key, value));
+        });
+        SdkHttpFullRequest request = b.build();
+
+        // now sign it
+        SdkHttpFullRequest signedRequest = signer.sign(request, params);
+        HttpExecuteRequest.Builder rb = HttpExecuteRequest.builder().request(signedRequest);
+        // !!!: line below is necessary even though the contentStreamProvider is in the request.
+        // Otherwise the body will be missing from the request and auth signature will fail.
+        request.contentStreamProvider().ifPresent(c -> rb.contentStreamProvider(c));
+        return httpClient.prepareRequest(rb.build()).call();
+    }
+
+    protected HttpExecuteResponse bulkRestRequest(SdkHttpMethod method, String host, String path,
+                                              Optional<Map<String, String>> queryParameters,
+                                              Optional<JSONArray> body)
+            throws IOException {
+        if (method.equals(SdkHttpMethod.GET) && body.isPresent()) {
+            throw new IOException("GET request cannot have a body. Otherwise Aws4Signer will include the body in the " +
+                    "signature calculation, but it will not be included in the request, leading to a 403 error back from AWS.");
+        }
+        SdkHttpFullRequest.Builder b = SdkHttpFullRequest.builder()
+                .encodedPath(path)
+                .host(host)
+                .method(method)
+                .protocol("https");
+        body.ifPresent(realBody -> {
+            b.putHeader("Content-Type", "application/x-ndjson; charset=utf-8");
+            b.contentStreamProvider(() -> new StringInputStream(realBody.join("\n") + "\n"));
         });
         queryParameters.ifPresent(qp -> {
             qp.forEach((key, value) -> b.putRawQueryParameter(key, value));

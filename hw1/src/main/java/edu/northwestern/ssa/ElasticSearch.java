@@ -1,9 +1,13 @@
 package edu.northwestern.ssa;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
+import software.amazon.awssdk.http.HttpExecuteResponse;
 import software.amazon.awssdk.http.SdkHttpMethod;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 public class ElasticSearch extends AwsSignedRestRequest {
@@ -17,17 +21,44 @@ public class ElasticSearch extends AwsSignedRestRequest {
 	}
 
 	public void CreateIndex() throws IOException {
-		restRequest(SdkHttpMethod.PUT,
+		HttpExecuteResponse response = restRequest(SdkHttpMethod.PUT,
 				elasticSearchHost,
 				elasticSearchIndex,
-				Optional.empty()).responseBody().get().close();
+				Optional.empty());
+
+		System.out.println("CreateIndex() returned code " + response.httpResponse().statusCode());
+		if (response.responseBody().isPresent()) {
+			response.responseBody().get().close();
+		}
 	}
 
-	public void PostDocument(JSONObject doc) throws IOException {
-		restRequest(SdkHttpMethod.POST,
+	public void PutDocument(JSONObject doc) throws IOException {
+		String id = String.valueOf(doc.get("url").hashCode());
+		Map<String, String> query = new HashMap<>();
+		query.put("op_type", "create");
+
+		HttpExecuteResponse response = restRequest(SdkHttpMethod.PUT,
 				elasticSearchHost,
-				elasticSearchIndex + "/_doc/",
+				elasticSearchIndex + "/_doc/" + id,
+				Optional.of(query),
+				Optional.of(doc));
+
+		System.out.println("PutDocuments() returned code " + response.httpResponse().statusCode());
+		if (response.responseBody().isPresent()) {
+			response.responseBody().get().close();
+		}
+	}
+
+	public void BulkPutDocuments(JSONArray body) throws IOException {
+		HttpExecuteResponse response = bulkRestRequest(SdkHttpMethod.POST,
+				elasticSearchHost,
+				elasticSearchIndex + "/_bulk",
 				Optional.empty(),
-				Optional.of(doc)).responseBody().get().close();
+				Optional.of(body));
+
+		System.out.println("BulkPutDocuments() returned code " + response.httpResponse().statusCode());
+		if (response.responseBody().isPresent()) {
+			response.responseBody().get().close();
+		}
 	}
 }
