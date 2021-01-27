@@ -4,6 +4,7 @@ import org.apache.commons.io.IOUtils;
 import org.archive.io.ArchiveReader;
 import org.archive.io.ArchiveRecord;
 import org.archive.io.warc.WARCReaderFactory;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -66,41 +67,61 @@ public class App {
             ElasticSearch es = new ElasticSearch();
             es.CreateIndex();
 
+            int count = 0;
+            String batchSizeString = System.getenv("BATCH_SIZE");
+            int batchSize = (batchSizeString != null) ? Integer.parseInt(batchSizeString) : 500;
+            JSONArray body = new JSONArray();
             for (ArchiveRecord r : ar) {
                 String url = r.getHeader().getUrl();
                 if (url == null) continue;
 
-                byte[] rawData = IOUtils.toByteArray(r, r.available());
-                String content = new String(rawData);
+                // Read and clean content. If none found, continue
+                String content = new String(IOUtils.toByteArray(r, r.available()));
                 content = content.substring(content.indexOf("\r\n\r\n") + 4);
                 content = content.replace("\0", "");
                 if (content.equals("")) continue;
 
+                // Parse content with Jsoup for title and text
                 Document doc = Jsoup.parse(content);
                 String title = doc.title(), text = doc.text();
                 if (text.equals("") || title.equals(""))
                     continue;
 
-                JSONObject body = new JSONObject();
-                body.put("title", title);
-                body.put("txt", text);
-                body.put("url", url);
+                // Add document to batch, use following format
+                // {{ "index" : { "_id" : "1" } }
+                // { "title" : "value1", "txt": "value2", "url": "value3" }
+                JSONObject source = new JSONObject();
+                source.put("title", title);
+                source.put("txt", text);
+                source.put("url", url);
+
+                JSONObject meta = new JSONObject();
+                meta.put("_id", String.valueOf(url.hashCode()));
+                JSONObject action = new JSONObject();
+                action.put("index", meta);
+
+                body.put(action);
+                body.put(source);
+
+                // Check if a new batch is ready to be posted
+                if (++count < batchSize) continue;
+                count = 0;
 
                 try {
-                    es.PutDocument(body);
+                    es.BulkPutDocuments(body);
+                    body = new JSONArray();
                     continue;
                 } catch (IOException ignored) {}
                 try {
-                    es.PutDocument(body);
+                    es.BulkPutDocuments(body);
+                    body = new JSONArray();
                 } catch (IOException e) {
                     System.out.println(e.toString());
-                    System.out.println("Unable to post " + url);
+                    System.out.println("Bulk index failed");
                 }
             }
-
             es.close();
             s3.close();
-
         } catch (IOException e) {
             e.printStackTrace();
             s3.close();
