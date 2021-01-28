@@ -155,7 +155,51 @@
           <version>3.0.0</version>
         </plugin>
 
-        <!-- support running tomcat from the commandline/IDE -->
+        <!-- support running tomcat8 from the commandline/IDE -->
+        <!-- from https://www.lars-fischer.me/posts/2016/integrate-tomcat-8x-with-maven-and-cargo-in-your-java-web-application/ -->
+        <plugin>
+          <groupId>org.codehaus.cargo</groupId>
+          <artifactId>cargo-maven2-plugin</artifactId>
+          <version>1.5.0</version>
+          <configuration>
+            <container>
+              <!-- https://codehaus-cargo.github.io/cargo/Maven2+Plugin+Reference+Guide.html#Maven2PluginReferenceGuide-container -->
+              <containerId>tomcat8x</containerId>
+              <zipUrlInstaller>
+                <url>https://repo1.maven.org/maven2/org/apache/tomcat/tomcat/8.5.4/tomcat-8.5.4.zip</url>
+              </zipUrlInstaller>
+              <!-- Instead of downloading the container, you can also reuse an existing installation by settings its directory:
+              <home>/Users/horsti/files/tomcats/apache-tomcat-8.5.4</home> -->
+              <output>${project.build.directory}/tomcat8x/container.log</output>
+              <!-- If true, then the file specified by <output> will not be erased across different runs -->
+              <append>false</append>
+              <!-- set this value if your web app is taking some time to start -->
+              <!--timeout>360000</timeout-->
+            </container>
+            <configuration>
+              <type>standalone</type>
+              <home>${project.build.directory}/tomcat8x</home>
+              <properties>
+                <cargo.servlet.port>8080</cargo.servlet.port>
+                <cargo.logging>high</cargo.logging>
+                <cargo.jvmargs>-XX:MaxPermSize=512m -Xms256m -Xmx3072m -Xdebug -Xnoagent -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005 -XX:+DisableExplicitGC -Xverify:none -Djava.awt.headless=true</cargo.jvmargs>
+              </properties>
+            </configuration>
+            <deployables>
+              <deployable>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>${project.artifactId}</artifactId>
+                <type>war</type>
+                <properties>
+                  <!-- deploy to root -->
+                  <context>/</context>
+                </properties>
+              </deployable>
+            </deployables>
+          </configuration>
+        </plugin>
+
+        <!-- support running tomcat7 from the commandline/IDE -->
         <plugin>
           <groupId>org.apache.tomcat.maven</groupId>
           <artifactId>tomcat7-maven-plugin</artifactId>
@@ -163,6 +207,7 @@
           <configuration>
             <path>/</path><!-- deploy war to the root url -->
             <uriEncoding>UTF-8</uriEncoding>
+	    <port>8080</port>
           </configuration>
         </plugin>
       </plugins>

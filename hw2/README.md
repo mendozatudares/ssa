@@ -11,6 +11,11 @@ To Run
 ```
 $ mvn clean package tomcat7:run
 ```
+or to use Tomcat 8.5:
+```
+$ mvn clean package cargo:run
+```
+
 
 References
 ==========
