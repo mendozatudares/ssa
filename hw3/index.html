@@ -38,7 +38,47 @@
   class SearchApp extends React.Component {
     render() {
       return (
-        <h1>Hello world!</h1>
+        <Header/>
+      );
+    }
+  }
+
+  class Header extends React.Component {
+    render() {
+      function handleChange(e) {
+        console.log(e.target.value);
+      }
+
+      return (
+        <nav class="navbar navbar-expand-lg sticky-top navbar-light bg-light">
+          <div class="container">
+            <div class="navbar-brand">News</div>
+            <form class="form-inline">
+              <div class="input-group">
+                <div class="input-group-prepend">
+                  <span class="input-group-text" id="basic-addon1">?</span>
+                </div>
+                <input type="text" class="form-control" placeholder="Search" aria-label="Search" aria-describedby="basic-addon1" onChange={handleChange}/>
+              </div>
+            </form>
+          </div>
+        </nav>
+      );
+    }
+  }
+
+  class Body extends React.Component {
+    render() {
+      return (
+        <div/>
+      );
+    }
+  }
+
+  class Card extends React.Component {
+    render() {
+      return (
+        <div/>
       );
     }
   }
