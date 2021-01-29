@@ -52,9 +52,9 @@ public class Search {
         String elasticSearchHost = Config.getParam("ELASTIC_SEARCH_HOST");
         String elasticSearchIndex = Config.getParam("ELASTIC_SEARCH_INDEX");
 
-        String query = "txt%3A" + String.join("%20AND%20", q.split("\\s+"));
-        if (l != null) query += "%20AND%20lang%3A" + l;
-        if (d != null) query += "%20AND%20date%3A" + d;
+        String query = "txt:(" + String.join(" AND ", q.split("\\s+")) + ")";
+        if (l != null) query += " AND lang:" + l;
+        if (d != null) query += " AND date:" + d;
 
         // https://www.baeldung.com/java-initialize-hashmap#1-usingcollectorstomap
         Map<String, String> queryParams = Stream.of(new String[][] {
