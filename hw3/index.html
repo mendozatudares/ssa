@@ -9,7 +9,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>React Local</title>
+  <title>SSA News - Search</title>
   <script type="application/javascript" src="https://unpkg.com/react@16.0.0/umd/react.production.min.js"></script>
   <script type="application/javascript" src="https://unpkg.com/react-dom@16.0.0/umd/react-dom.production.min.js"></script>
   <script type="application/javascript" src="https://unpkg.com/babel-standalone@6.26.0/babel.js"></script>
@@ -36,31 +36,76 @@
   const rootElement = document.getElementById('root')
 
   class SearchApp extends React.Component {
+    constructor() {
+      super();
+      this.state = {
+        search: "",
+        filter_en: false,
+        filter_date: "",
+      };
+
+      this.handleSearchChange = this.handleSearchChange.bind(this);
+      this.handleLangChange = this.handleLangChange.bind(this);
+      this.handleDateChange = this.handleDateChange.bind(this);
+    }
+
+    handleSearchChange(term) {
+      this.setState({
+        search: term,
+      });
+    }
+
+    handleLangChange(value) {
+      this.setState({
+        filter_en: value,
+      });
+    }
+
+    handleDateChange(date) {
+      this.setState({
+        filter_date: date
+      })
+    }
+
     render() {
       return (
-        <Header/>
+        <div>
+          <Header onSearch={this.handleSearchChange} onLang={this.handleLangChange} onDate={this.handleDateChange}/>
+          <Body state={this.state}/>
+        </div>
       );
     }
   }
 
   class Header extends React.Component {
-    render() {
-      function handleChange(e) {
-        console.log(e.target.value);
-      }
+    constructor(props) {
+      super(props);
+      this.handleCheckboxChange = this.handleCheckboxChange.bind(this);
+    }
 
+    handleCheckboxChange(e) {
+      let node = this.refs.filter_en;
+      this.props.onLang(node.checked);
+    }
+
+    render() {
       return (
-        <nav class="navbar navbar-expand-lg sticky-top navbar-light bg-light">
+        <nav class="navbar sticky-top navbar-light bg-white">
           <div class="container">
-            <div class="navbar-brand">News</div>
-            <form class="form-inline">
-              <div class="input-group">
-                <div class="input-group-prepend">
-                  <span class="input-group-text" id="basic-addon1">?</span>
-                </div>
-                <input type="text" class="form-control" placeholder="Search" aria-label="Search" aria-describedby="basic-addon1" onChange={handleChange}/>
+            <div class="input-group input-group-lg">
+              <div class="input-group-prepend">
+                <span class="input-group-text" id="search">SSA News</span>
               </div>
-            </form>
+              <input type="text" class="form-control" placeholder="Search for articles by text" aria-label="Search" aria-describedby="search" onChange={(e) => this.props.onSearch(e.target.value)}/>
+            </div>
+            <div class="form-inline mt-1">
+              <div class="input-group-prepend">
+                <span class="input-group-text" id="date">Date</span>
+              </div>
+              <input type="date" class="form-control mr-sm-2" aria-label="Date" onChange={(e) => this.props.onDate(e.target.value)}/>
+              <input type="checkbox" class="form-check-input" id="english" ref="filter_en" onClick={(e) => this.handleCheckboxChange(e)}/>
+              <label class="form-check-label" for="english">English results only</label>
+            </div>
           </div>
         </nav>
       );
@@ -68,17 +113,126 @@
   }
 
   class Body extends React.Component {
+    constructor(props) {
+      super(props);
+      this.state = {
+        articles: [],
+        listed_results: 0,
+        total_results: 0,
+      }
+      this.globalRenderArticlesNonce;
+    }
+
+    componentDidUpdate(prevProps) {
+      if(prevProps === this.props) return;
+      this.renderArticles()
+        .then(data => {
+          if (data !== null) {
+            const empty = data.length == 0;
+            this.setState({
+              articles: empty ? [] : data[0],
+              listed_results: empty ? 0 : data[1],
+              total_results: empty ? 0 : data[2],
+            });
+          }
+        });
+    }
+
+    componentDidMount() {
+      // https://medium.com/javascript-in-plain-english/building-an-infinite-scroll-with-vanilla-javascript-32810bae9a8c
+      window.addEventListener("scroll", () => {
+        const { scrollHeight, scrollTop, clientHeight } = document.documentElement;
+        if (scrollTop + clientHeight > scrollHeight - 5) {
+          this.renderArticles(this.state.listed_results)
+            .then(data => {
+              if (data !== null)
+                this.setState({
+                  articles: this.state.articles.concat(data[0]),
+                  listed_results: this.state.listed_results + data[1],
+                  total_results: data[2],
+                });
+            });
+        }
+      });
+    }
+
     render() {
       return (
-        <div/>
+        <div class="container">
+          {this.state.articles}
+        </div>
       );
+    }
+
+    async renderArticles(offset = 0) {
+      // https://dev.to/chromiumdev/cancellable-async-functions-in-javascript-5gp7
+      const localNonce = this.globalRenderArticlesNonce = new Object();
+      if (this.props.state.search.length == 0) return [];
+
+      const generateURL = () => {
+        let url = "http://ssa-hw2-backend.stevetarzia.com/api/search";
+        url += "?query=" + this.props.state.search;
+        if (this.props.state.filter_en) url += "&language=en";
+        if (this.props.state.filter_date) url += "&date=" + this.props.state.filter_date;
+        if (offset) url += "&offset=" + offset
+
+        return encodeURI(url);
+      }
+
+      const generateArticleList = (items) => {
+        return items.map((article, i) => {
+          return (
+            <Card article={article} search={this.props.state.search}/>
+          );
+        });
+      }
+
+      const results = await fetch(generateURL())
+        .then(response => response.json()) /* asynchronously parse the response as JSON */
+        .then(function(json) { /* do something with the resulting "json" object */
+          return [generateArticleList(json.articles), json.returned_results, json.total_results];
+        })
+        .catch(function(error) { /* do something if either the HTTP call or the JSON parsing fails */
+          console.error(error)
+          return [];
+        });
+
+      // check if a new call to this function was made during execution (will likely happen when typing)
+      if (localNonce !== this.globalRenderArticlesNonce) { return null; }
+      return results;
     }
   }
 
   class Card extends React.Component {
+    constructor(props) {
+      super(props);
+    }
+
     render() {
+      const trim = (txt) => {
+        return txt.length > 200 ? txt.substring(0, 200) + "..." : txt
+      }
+
+      // https://itnext.io/dynamic-keyword-highlighting-in-javascript-434437f9afca
+      const highlight = (txt) => {
+        let keywords = this.props.search.split();
+        let temp = txt
+        keywords.forEach(keyword => {
+          temp = temp.replace(new RegExp(keyword, 'ig'), `<mark>${keyword}</mark>`)
+        });
+        return temp
+      }
+
       return (
-        <div/>
+        <div class="card m-3">
+          <div class="card-body">
+            <a href={this.props.article.url}>
+              <h5 class="card-title">{this.props.article.title}</h5>
+              <h6 class="card-subtitle mb-2 text-muted">{this.props.article.url}</h6>
+            </a>
+            <p class="card-text" dangerouslySetInnerHTML={{ __html: highlight(trim(this.props.article.txt))}}/>
+          </div>
+        </div>
       );
     }
   }
