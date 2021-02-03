@@ -49,7 +49,7 @@
     }
 
     handleSearchChange(e) {
-      const new_search = e.target.value.trim().split(/\s+/);
+      const new_search = e.target.value.replace(/[.,\/#!\?$%\^&\*;:{}=\-_`~()]/g, "").trim().split(/\s+/);
       if (JSON.stringify(new_search) !== JSON.stringify(this.state.search))
         this.setState({
           search: new_search,
