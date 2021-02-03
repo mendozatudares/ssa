@@ -42,16 +42,18 @@
       this.handleLangChange = this.handleLangChange.bind(this);
       this.handleDateChange = this.handleDateChange.bind(this);
       this.state = {
-        search: "",
+        search: [],
         filter_en: false,
         filter_date: "",
       };
     }
 
     handleSearchChange(e) {
-      this.setState({
-        search: e.target.value,
-      });
+      const new_search = e.target.value.trim().split(/\s+/);
+      if (JSON.stringify(new_search) !== JSON.stringify(this.state.search))
+        this.setState({
+          search: new_search,
+        });
     }
 
     handleLangChange(value) {
@@ -171,7 +173,7 @@
 
       const generateURL = () => {
         let url = "http://ssa-hw2-backend.stevetarzia.com/api/search";
-        url += "?query=" + this.props.state.search;
+        url += "?query=" + this.props.state.search.join(" ");
         if (this.props.state.filter_en) url += "&language=en";
         if (this.props.state.filter_date) url += "&date=" + this.props.state.filter_date;
         if (offset) url += "&offset=" + offset;
@@ -211,16 +213,22 @@
 
     render() {
       const trim = (txt) => {
-        return txt.length > 200 ? txt.substring(0, 200) + "..." : txt;
+        let txtLower = txt.toLowerCase();
+        let keywordIndices = this.props.search
+            .map(keyword => txtLower.indexOf(keyword.toLowerCase()))
+            .filter(index => index > -1);
+
+        let start = keywordIndices[0] - 50;
+        start = start > 0 ? start : 0;
+        let snippet = txt.substring(start, txt.length);
+
+        return snippet.length > 270 ? snippet.substring(0, 270) + "..." : snippet;
       };
 
       // https://itnext.io/dynamic-keyword-highlighting-in-javascript-434437f9afca
       const highlight = (txt) => {
-        let keywords = this.props.search.split();
         let temp = txt;
-        keywords.forEach(keyword => {
-          temp = temp.replace(new RegExp(keyword, 'ig'), `<mark>${keyword}</mark>`);
-        });
+        this.props.search.forEach(keyword => temp = temp.replace(new RegExp(keyword, 'ig'), `<mark>${keyword}</mark>`));
         return temp;
       };
 
