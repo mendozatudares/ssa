@@ -214,11 +214,7 @@
     render() {
       const trim = (txt) => {
         let txtLower = txt.toLowerCase();
-        let keywordIndices = this.props.search
-            .map(keyword => txtLower.indexOf(keyword.toLowerCase()))
-            .filter(index => index > -1);
-
-        let start = keywordIndices[0] - 50;
+        let start = txtLower.indexOf(this.props.search[0].toLowerCase()) - 50;
         start = start > 0 ? start : 0;
         let snippet = txt.substring(start, txt.length);
 
