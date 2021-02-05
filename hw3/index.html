@@ -214,18 +214,22 @@
     render() {
       const trim = (txt) => {
         let txtLower = txt.toLowerCase();
-        let start = txtLower.indexOf(this.props.search[0].toLowerCase()) - 50;
-        start = start > 0 ? start : 0;
+        let start = -1, index = 0;
+        while (start == -1 && index < this.props.search.length) {
+          start = txtLower.indexOf(`${this.props.search[index].toLowerCase()} `);
+          index++;
+        }
+        start = start > 50 ? start - 50 : 0;
         let snippet = txt.substring(start, txt.length);
-
         return snippet.length > 270 ? snippet.substring(0, 270) + "..." : snippet;
       };
 
       // https://itnext.io/dynamic-keyword-highlighting-in-javascript-434437f9afca
       const highlight = (txt) => {
         let temp = txt;
-        this.props.search.forEach(keyword => temp = temp.replace(new RegExp(keyword, 'ig'), `<mark>${keyword}</mark>`));
-        return temp;
+        this.props.search.forEach(keyword => temp = temp.replace(new RegExp(`(\\s?)(${keyword})([^a-zA-Z0-9])`, 'ig'), '$1<keyword>$2<keyword>$3'));
+        const tempSplit = temp.split('<keyword>');
+        return tempSplit.map((chunk, i) => chunk.indexOf(" ") == -1 ? <b key={i}>{chunk}</b> : <span key={i}>{chunk}</span>);
       };
 
       return (
@@ -235,7 +239,9 @@
               <h5 className="card-title">{this.props.article.title}</h5>
               <h6 className="card-subtitle mb-2 text-muted">{this.props.article.url}</h6>
             </a>
-            <p className="card-text" dangerouslySetInnerHTML={{ __html: highlight(trim(this.props.article.txt))}}/>
+            <p className="card-text">
+              {highlight(trim(this.props.article.txt))}
+            </p>
           </div>
         </div>
       );
