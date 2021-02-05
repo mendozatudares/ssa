@@ -221,6 +221,7 @@
         }
         start = start > 50 ? start - 50 : 0;
         let snippet = txt.substring(start, txt.length);
+        if (start > 0) snippet = "..." + snippet;
         return snippet.length > 270 ? snippet.substring(0, 270) + "..." : snippet;
       };
 
