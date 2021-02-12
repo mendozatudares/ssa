@@ -8,6 +8,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.regions.Region;
@@ -61,11 +62,18 @@ public class App {
             .build();
         ResponseInputStream<GetObjectResponse> ris = s3.getObject(request);
 
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
+        SimpleDateFormat stringFormat = new SimpleDateFormat("yyyy-MM-dd");
+        int prefixLength = "crawl-data/CC-NEWS/XXXX/XX/CC-NEWS-".length();
+        String date = stringFormat.format(dateFormat.parse(commonCrawlFilename, new ParsePosition(prefixLength)));
+
         try {
             ArchiveReader ar = WARCReaderFactory.get(commonCrawlFilename, ris, true);
 
             ElasticSearch es = new ElasticSearch();
-            es.CreateIndex();
+            try {
+                es.CreateIndex();
+            } catch (IOException ignored) {}
 
             int count = 0;
             String batchSizeString = System.getenv("BATCH_SIZE");
@@ -83,17 +91,22 @@ public class App {
 
                 // Parse content with Jsoup for title and text
                 Document doc = Jsoup.parse(content);
-                String title = doc.title(), text = doc.text();
+                String title = doc.title(), text = doc.text(), lang = null;
+                Element root = doc.getElementById("root");
+                if (root != null)
+                    lang = root.attr("lang");
                 if (text.equals("") || title.equals(""))
                     continue;
 
                 // Add document to batch, use following format
                 // { "index" : { "_id" : "1" } }
-                // { "title" : "value1", "txt": "value2", "url": "value3" }
+                // { "title" : "value1", "txt": "value2", "url": "value3" ... }
                 JSONObject source = new JSONObject();
                 source.put("title", title);
                 source.put("txt", text);
                 source.put("url", url);
+                source.put("lang", lang);
+                source.put("date", date);
 
                 JSONObject meta = new JSONObject();
                 meta.put("_id", String.valueOf(url.hashCode()));
