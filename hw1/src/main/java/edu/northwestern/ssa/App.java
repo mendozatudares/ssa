@@ -91,10 +91,7 @@ public class App {
 
                 // Parse content with Jsoup for title and text
                 Document doc = Jsoup.parse(content);
-                String title = doc.title(), text = doc.text(), lang = null;
-                Element root = doc.getElementById("root");
-                if (root != null)
-                    lang = root.attr("lang");
+                String title = doc.title(), text = doc.text();
                 if (text.equals("") || title.equals(""))
                     continue;
 
@@ -105,7 +102,6 @@ public class App {
                 source.put("title", title);
                 source.put("txt", text);
                 source.put("url", url);
-                source.put("lang", lang);
                 source.put("date", date);
 
                 JSONObject meta = new JSONObject();
